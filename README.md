@@ -471,7 +471,4 @@ No unauthorized systems were targeted.
 
 ```
 
----
 
-
-```
