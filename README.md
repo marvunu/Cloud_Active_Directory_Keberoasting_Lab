@@ -11,24 +11,24 @@
 ---
 
 ## Table of Contents
-- [Why I built this](#why-i-built-this)
-- [High-level story](#high-level-story)
-- [Architecture](#architecture)
-- [Tools used](#tools-used)
-- [Build Log (Step-by-step)](#build-log-step-by-step)
-  - [Phase 1 — AWS Network Setup](#phase-1--aws-network-setup)
-  - [Phase 2 — Launch Domain Controller + Configure AD](#phase-2--launch-domain-controller--configure-ad)
-  - [Phase 3 — Launch Domain Member Server (Client)](#phase-3--launch-domain-member-server-client)
-  - [Phase 4 — External Recon (Kali)](#phase-4--external-recon-kali)
-  - [Phase 5 — SMB Authentication & Password Spray](#phase-5--smb-authentication--password-spray)
-  - [Phase 6 — Kerberoasting](#phase-6--kerberoasting)
-  - [Phase 7 — Remediation & Verification](#phase-7--remediation--verification)
-- [Troubleshooting Notes (Real issues I hit)](#troubleshooting-notes-real-issues-i-hit)
-- [Screenshots / Evidence](#screenshots--evidence)
-- [Findings](#findings)
-- [MITRE ATT&CK Mapping](#mitre-attck-mapping)
-- [Remediation Summary](#remediation-summary)
-- [Next Steps (Privilege Escalation)](#next-steps-privilege-escalation)
+- [Why I built this](why-i-built-this)
+- [High-level story](high-level-story)
+- [Architecture](architecture)
+- [Tools used](tools-used)
+- [Build Log (Step-by-step)](build-log-step-by-step)
+  - [Phase 1 — AWS Network Setup](phase-1--aws-network-setup)
+  - [Phase 2 — Launch Domain Controller + Configure AD](phase-2--launch-domain-controller--configure-ad)
+  - [Phase 3 — Launch Domain Member Server (Client)](phase-3--launch-domain-member-server-client)
+  - [Phase 4 — External Recon (Kali)](phase-4--external-recon-kali)
+  - [Phase 5 — SMB Authentication & Password Spray](phase-5--smb-authentication--password-spray)
+  - [Phase 6 — Kerberoasting](phase-6--kerberoasting)
+  - [Phase 7 — Remediation & Verification](phase-7--remediation--verification)
+- [Troubleshooting Notes (Real issues I hit)](troubleshooting-notes-real-issues-i-hit)
+- [Screenshots / Evidence](screenshots--evidence)
+- [Findings](findings)
+- [MITRE ATT&CK Mapping](mitre-attck-mapping)
+- [Remediation Summary](remediation-summary)
+- [Next Steps (Privilege Escalation)](next-steps-privilege-escalation)
 
 ---
 
@@ -72,8 +72,8 @@ Defender path:
   - AD-CLIENT-01 — Windows Server 2022 domain member (used as “client” since Windows 10 AMI wasn’t available without Marketplace costs)
 - Attacker: Local Kali VM (outside AWS)
 
-> Important design note: This project intentionally used a public subnet* to simulate external exposure.  
-> In real environments, AD should **not** be internet-reachable.
+> Important design note: This project intentionally used a public subnet to simulate external exposure.  
+> In real environments, AD should not be internet-reachable.
 
 ---
 
@@ -247,7 +247,6 @@ nmap --script smb-os-discovery -p 445 <DC_PUBLIC_IP>
 ```
 
 It appeared “filtered” even though port 445 was “open” on basic scans.
-
 ![Filtered Scan](https://i.imgur.com/Xf9T26z.png)
 
 This was a useful lesson:
