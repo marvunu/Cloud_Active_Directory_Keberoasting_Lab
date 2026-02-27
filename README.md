@@ -44,19 +44,19 @@ I built this lab to simulate a realistic situation:
 - An external attacker enumerates services, validates credentials, and performs Kerberoasting
 - The defender then remediates by reducing attack surface and verifying the fix
 
-This repo is written as a **walkthrough + my thinking** as I went.
+This repo is written as a walkthrough + my thinking as I went.
 
 ---
 
 ## High-level story
 
-**External attacker path:**
+External attacker path:
 1. Identify exposed AD ports (88/389/445/3389)
 2. Validate SMB authentication using weak credentials
 3. Enumerate SPNs and extract Kerberoastable TGS hash
 4. Prove impact, then fix it
 
-**Defender path:**
+Defender path:
 1. Reduce externally exposed ports (close 88/389/445)
 2. Keep only RDP open to my IP for management
 3. Re-scan to confirm the attack path is dead
@@ -65,31 +65,31 @@ This repo is written as a **walkthrough + my thinking** as I went.
 
 ## Architecture
 
-- **VPC:** `10.0.0.0/16`
-- **Subnet:** `10.0.1.0/24` (public for simplicity)
-- **Instances:**
-  - `AD-DC-01` — Windows Server 2022 Domain Controller
-  - `AD-CLIENT-01` — Windows Server 2022 domain member (used as “client” since Windows 10 AMI wasn’t available without Marketplace costs)
-- **Attacker:** Local Kali VM (outside AWS)
+- VPC: 10.0.0.0/16
+- Subnet: 10.0.1.0/24 (public for simplicity)
+- Instances:
+  - AD-DC-01 — Windows Server 2022 Domain Controller
+  - AD-CLIENT-01 — Windows Server 2022 domain member (used as “client” since Windows 10 AMI wasn’t available without Marketplace costs)
+- Attacker: Local Kali VM (outside AWS)
 
-> **Important design note:** This project intentionally used a *public subnet* to simulate external exposure.  
+> Important design note: This project intentionally used a public subnet* to simulate external exposure.  
 > In real environments, AD should **not** be internet-reachable.
 
 ---
 
 ## Tools used
 
-**AWS / Cloud**
+AWS / Cloud
 - EC2, VPC, Subnets, Route Tables, Internet Gateway, Security Groups
 
-**Windows / AD**
-- AD DS role, DNS, `dsa.msc`, `setspn`
+Windows / AD
+- AD DS role, DNS, dsa.msc, setspn
 
-**Kali / Attacker tools**
-- `nmap`
-- `smbclient`
-- `crackmapexec`
-- `impacket-GetUserSPNs`
+Kali / Attacker tools
+- nmap
+- smbclient
+- crackmapexec
+- impacket-GetUserSPNs
 
 ---
 
@@ -98,16 +98,16 @@ This repo is written as a **walkthrough + my thinking** as I went.
 ## Phase 1 — AWS Network Setup
 
 ### 1) Create VPC
-- VPC CIDR: `10.0.0.0/16`
+- VPC CIDR: 10.0.0.0/16
 
 ### 2) Create Subnet
-- Subnet CIDR: `10.0.1.0/24`
+- Subnet CIDR: 10.0.1.0/24
 
 ### 3) Internet Gateway + Route Table
 - Create IGW and attach to VPC
-- Create a **new** route table (kept the default “main” untouched)
+- Create a new route table (kept the default “main” untouched)
 - Add route:
-  - `0.0.0.0/0` → Internet Gateway
+  - 0.0.0.0/0 → Internet Gateway
 - Associate route table to subnet
 
 ✅ At this point, the subnet had internet access.
@@ -117,48 +117,48 @@ This repo is written as a **walkthrough + my thinking** as I went.
 ## Phase 2 — Launch Domain Controller + Configure AD
 
 ### 1) Launch EC2: Domain Controller
-- Name: `AD-DC-01`
+- Name: AD-DC-01
 - OS: Windows Server 2022 Base (Amazon-owned, not Marketplace)
-- Type: `t3.micro` (kept cost low)
+- Type: t3.micro (kept cost low)
 - Storage: 30GB gp3
 
 ### 2) Connect via RDP
-- Download `.rdp` file from AWS
+- Download .rdp file from AWS
 - Decrypt Windows password using key pair
-- Login as `Administrator`
+- Login as Administrator
 
-### 3) Set Static IP *inside Windows*
+### 3) Set Static IP inside Windows
 This is critical for AD stability.
 
 Inside the server:
-- `ncpa.cpl` → Ethernet → IPv4 properties
+- ncpa.cpl → Ethernet → IPv4 properties
 - Set:
-  - **IP:** (the current private IP from `ipconfig`, e.g. `10.0.1.10`)
-  - **Mask:** `255.255.255.0`
-  - **Gateway:** `10.0.1.1`
-  - **DNS:** `127.0.0.1` (because this will become DNS server)
+  - IP: (the current private IP from ipconfig, e.g. `10.0.1.10`)
+  - Mask: 255.255.255.0
+  - Gateway: 10.0.1.1
+  - DNS: 127.0.0.1 (because this will become DNS server)
 
 ### 4) Install Active Directory Domain Services
-Server Manager → Add Roles → **Active Directory Domain Services**  
+Server Manager → Add Roles → Active Directory Domain Services  
 Then promote to DC:
-- New forest: `corp.local`
+- New forest: corp.local
 
 After reboot, login:
-- `corp\Administrator`
+- corp\Administrator
 
 ### 5) Create Users + Service Account
 Opened AD Users and Computers:
-- `Win + R` → `dsa.msc`
+- Win + R → dsa.msc
 
 Created:
-- `jsmith` / `Password123!`
-- `mturner` / `Password123!`
-- `abrown` / `Welcome123!`
-- `itadmin` / `Admin123!` (added to **Domain Admins**)
-- `svc-sql` / `Service123!` (service account)
+- jsmith / Password123!
+- dbenz / Password123!
+- cmark / Welcome123!
+- itadmin / Admin123! (added to Domain Admins)
+- svc-sql / Service123! (service account)
 
 ### 6) Configure SPN (for Kerberoasting)
-On `AD-DC-01` (Admin cmd):
+On AD-DC-01 (Admin cmd):
 
 ```powershell
 setspn -A MSSQLSvc/sql.corp.local:1433 corp\svc-sql
@@ -178,19 +178,19 @@ To keep the project cost-safe, I used another Windows Server as the “client.�
 
 ### 1) Launch EC2: Domain Member
 
-* Name: `AD-CLIENT-01`
+* Name: AD-CLIENT-01
 * Windows Server 2022 Base
-* `t3.micro`
+* t3.micro
 * 30GB storage
 
 ### 2) Set Client DNS to DC IP
 
-On `AD-CLIENT-01`:
+On AD-CLIENT-01:
 
-* `ipconfig` (note current private IP)
-* `ncpa.cpl` → IPv4 properties:
+* ipconfig (note current private IP)
+* ncpa.cpl → IPv4 properties:
 
-  * **DNS:** DC private IP (example: `10.0.1.10`)
+  * **DNS:** DC private IP (example: 10.0.1.10)
 
 Test:
 
@@ -203,14 +203,14 @@ nslookup corp.local
 
 ### 3) Join Domain
 
-* `sysdm.cpl` → Computer Name → Change → Domain: `corp.local`
+* sysdm.cpl → Computer Name → Change → Domain: corp.local
 * Auth: `corp\Administrator`
 
 Reboot.
 
 ### 4) Login challenge (real issue)
 
-I attempted RDP login as `jsmith` and got:
+I attempted RDP login as jsmith and got:
 
 > “account wasn’t authorized for remote login”
 
@@ -252,7 +252,7 @@ This was a useful lesson:
 
 ### 2) SMB connection timeout (NT_STATUS_IO_TIMEOUT)
 
-`smbclient` initially timed out.
+smbclient initially timed out.
 Fix: force SMB2 (modern Windows Server requires SMB2/SMB3).
 
 ✅ Working command:
@@ -286,7 +286,7 @@ crackmapexec smb <DC_PUBLIC_IP> -u abrown  -p Password123!
 impacket-GetUserSPNs corp.local/jsmith:Password123! -dc-ip <DC_PUBLIC_IP>
 ```
 
-✅ Saw `svc-sql` in the results.
+✅ Saw svc-sql in the results.
 
 ### 2) Request Kerberos service ticket (hash extraction)
 
@@ -356,7 +356,7 @@ Cause:
 
 Fix:
 
-* Logged in with `itadmin` (Domain Admin)
+* Logged in with itadmin (Domain Admin)
 * (Optional improvement) Add normal users to **Remote Desktop Users** if you want them to RDP
 
 ## 3) SMB timeouts but port shows open
@@ -451,7 +451,7 @@ I captured evidence at each stage. Recommended screenshot names:
 Now that initial access + Kerberoast hash extraction is proven, the next phase is:
 
 1. **Offline cracking simulation** (controlled)
-2. Validate whether `svc-sql` has elevated rights
+2. Validate whether svc-sql has elevated rights
 3. Attempt lateral movement / privileged actions (lab-only)
 4. Apply defensive controls:
 
@@ -473,7 +473,5 @@ No unauthorized systems were targeted.
 
 ---
 
-If you want, paste your **actual commands output** (redacting the IP) and I’ll weave them into the README so it reads like a real “field report” with timestamps and evidence blocks.
 
-Next, when you’re ready, we’ll continue with **privilege escalation** in a safe, portfolio-friendly way.
 ```
