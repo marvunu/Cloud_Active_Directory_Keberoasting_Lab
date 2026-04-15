@@ -432,23 +432,9 @@ smbclient -L //<DC_PUBLIC_IP>/ -U jsmith --option='client min protocol=SMB2'
 * Enforce strong password policy + lockout thresholds
 * Service account hygiene: long passwords, managed accounts, least privilege
 
----
 
-# Next Steps (Privilege Escalation)
 
-Now that initial access + Kerberoast hash extraction is proven, the next phase is:
 
-1. **Offline cracking simulation** (controlled)
-2. Validate whether svc-sql has elevated rights
-3. Attempt lateral movement / privileged actions (lab-only)
-4. Apply defensive controls:
-
-   * service account hardening
-   * password policy
-   * remove unnecessary privileges
-   * segmentation
-
-> Next repo update will document the escalation chain and defenses applied.
 
 ---
 
